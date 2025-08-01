@@ -1,29 +1,36 @@
 // screens/home_screen.dart
-import 'package:flutter/material.dart';
 
-class HomeScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'dart:async'; // Importe para usar o Timer
+
+// 1. Mude de StatelessWidget para StatefulWidget
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+
+  // 2. Adicione o método initState para iniciar o timer
+  @override
+  void initState() {
+    super.initState();
+    Timer(const Duration(seconds: 2), () {
+      // 3. Após 2 segundos, navegue para a tela de login
+      Navigator.pushReplacementNamed(context, '/login');
+    });
+  }
+
+  // 4. No método build, mostre a sua logo
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard RH')),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton.icon(
-              icon: const Icon(Icons.list),
-              label: const Text('Ver Funcionários'),
-              onPressed: () => Navigator.pushNamed(context, '/lista'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.person_add),
-              label: const Text('Cadastrar Funcionário'),
-              onPressed: () => Navigator.pushNamed(context, '/cadastro'),
-            ),
-          ],
+        child: Image.asset(
+          'images/GestorRhSemFundo.png', // Verifique se este é o nome correto do arquivo
+          width: 250, // Ajuste o tamanho se precisar
         ),
       ),
     );

@@ -1,12 +1,20 @@
+//Import
 import 'package:flutter/material.dart';
+import 'package:rh_app/screens/esqueci_senha.dart';
+
+//Firebase
+import 'firebase_options.dart'; // gerado pelo flutterfire configure
 import 'package:firebase_core/firebase_core.dart';
 
-import 'firebase_options.dart'; // gerado pelo flutterfire configure
-
+//Screens
 import 'screens/home_screen.dart';
 import 'screens/lista_funcionarios.dart';
 import 'screens/cadastro_funcionario.dart';
 import 'screens/detalhes_funcionario.dart';
+import 'package:rh_app/screens/cadastro_email.dart';
+import 'package:rh_app/screens/login.dart';
+import 'package:rh_app/screens/principal.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +40,11 @@ class RHApp extends StatelessWidget {
         '/': (context) => const HomeScreen(),
         '/lista': (context) => const ListaFuncionarios(),
         '/cadastro': (context) => const CadastroFuncionario(),
-        '/detalhes': (context) => const DetalhesFuncionario(),
+       // '/detalhes': (context) => const DetalhesFuncionario(),
+        '/login': (context) => const Login(),
+        '/cadastro-email': (context) => CadastroEmail(),
+        '/principal': (context) => Principal(),
+        '/esqueci-senha': (context) => EsqueciSenha(),
       },
     );
   }
