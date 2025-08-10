@@ -1,5 +1,6 @@
 // screens/cadastro_funcionario.dart
 import 'package:flutter/material.dart';
+import 'package:rh_app/widgets/custom_app_bar.dart';
 import '../models/funcionario.dart';
 import '../services/funcionario_service.dart';
 
@@ -67,18 +68,8 @@ class _CadastroFuncionarioState extends State<CadastroFuncionario> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black87,
-        title: Image.asset('images/GestorRHLogo.png', height: 35),
-        actions: [
-          const Center(child: Text("Olá, Flávio!", style: TextStyle(color: Colors.black))),
-          const SizedBox(width: 8),
-          const CircleAvatar(child: Icon(Icons.person)),
-          const SizedBox(width: 16),
-        ],
-      ),
+      appBar: const CustomAppBar(),
+
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Padding(
