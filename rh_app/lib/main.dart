@@ -1,6 +1,7 @@
 //Import
 import 'package:flutter/material.dart';
 import 'package:rh_app/screens/esqueci_senha.dart';
+import 'auth_check.dart';
 
 //Firebase
 import 'firebase_options.dart'; // gerado pelo flutterfire configure
@@ -14,6 +15,8 @@ import 'screens/detalhes_funcionario.dart';
 import 'package:rh_app/screens/cadastro_email.dart';
 import 'package:rh_app/screens/login.dart';
 import 'package:rh_app/screens/principal.dart';
+import 'package:rh_app/screens/tela_adm.dart';
+
 
 
 void main() async {
@@ -36,8 +39,10 @@ class RHApp extends StatelessWidget {
       title: 'RH App',
       theme: ThemeData(primarySwatch: Colors.indigo),
       initialRoute: '/',
+      // O home agora é o AuthCheck!
+      home: const AuthCheck(),
       routes: {
-        '/': (context) => const HomeScreen(),
+        //'/': (context) => const HomeScreen(),
         '/lista': (context) => const ListaFuncionarios(),
         '/cadastro': (context) => const CadastroFuncionario(),
        // '/detalhes': (context) => const DetalhesFuncionario(),
@@ -45,6 +50,7 @@ class RHApp extends StatelessWidget {
         '/cadastro-email': (context) => CadastroEmail(),
         '/principal': (context) => Principal(),
         '/esqueci-senha': (context) => EsqueciSenha(),
+        '/adm': (context) => TelaAdm(),
       },
     );
   }

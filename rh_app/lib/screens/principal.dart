@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/funcionario.dart';
 import '../services/funcionario_service.dart';
 import '../widgets/funcionario_card.dart';
+import '../widgets/custom_app_bar.dart';
 
 class Principal extends StatefulWidget {
   const Principal({super.key});
@@ -18,18 +19,12 @@ class _PrincipalState extends State<Principal> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Image.asset('images/GestorRHLogo.png', height: 35), // Sua logo
-        actions: [
-          const Center(child: Text("Olá, Flávio!", style: TextStyle(color: Colors.black))),
-          const SizedBox(width: 8),
-          const CircleAvatar(child: Icon(Icons.person)),
-          const SizedBox(width: 16),
-        ],
-      ),
+      // 1. O CustomAppBar vai sozinho aqui, sem nenhum parâmetro.
+      appBar: const CustomAppBar(),
+      
       backgroundColor: Colors.white,
+
+      // 2. Todo o conteúdo da tela vai aqui, no body do Scaffold.
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -79,7 +74,6 @@ class _PrincipalState extends State<Principal> {
             // Lista de funcionários
             Expanded(
               child: StreamBuilder<List<Funcionario>>(
-                // O stream muda com base na busca
                 stream: _service.buscarPorNome(_busca),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
