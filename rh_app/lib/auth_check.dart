@@ -32,7 +32,7 @@ class _AuthCheckState extends State<AuthCheck> {
           MaterialPageRoute(builder: (context) => const Principal()),
         );
       } else {
-        // Se não tem, vai para a tela de login
+        // Se não tem, vai para a tela Home Screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),

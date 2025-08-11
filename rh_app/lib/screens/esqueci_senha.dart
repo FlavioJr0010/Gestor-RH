@@ -156,7 +156,6 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
                     ],
                   ),
                 
-                // ✅ NOVO LAYOUT DE BOTÕES
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [

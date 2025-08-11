@@ -83,6 +83,7 @@ class DetalhesFuncionario extends StatelessWidget {
                     'R\$ ${funcionario.salario.toStringAsFixed(2)}',
                   ),
                   _buildDetailRow('Telefone:', funcionario.telefone),
+                  _buildDetailRow('Email:', funcionario.email),
                   _buildDetailRow('Status:', funcionario.status),
                   _buildDetailRow('Endereço:', funcionario.endereco),
                   _buildDetailRow('Status Civil:', funcionario.statusCivil),
