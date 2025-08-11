@@ -52,15 +52,6 @@ class _TelaAdmState extends State<TelaAdm> {
     );
   }
 
-  void _navegarParaEdicao(Funcionario funcionario) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AtualizarFuncionario(funcionario: funcionario),
-      ),
-    );
-  }
-
   void _enviarEmailResetSenha(String email) {
     showDialog(
       context: context,
@@ -177,11 +168,6 @@ class _TelaAdmState extends State<TelaAdm> {
                                     );
                                   }
                                 },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.orange),
-                                tooltip: 'Editar Dados do Funcionário',
-                                onPressed: () => _navegarParaEdicao(funcionario),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.red),
