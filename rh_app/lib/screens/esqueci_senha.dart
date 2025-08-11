@@ -89,9 +89,6 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recuperar Conta'),
-      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -168,7 +165,7 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
                       child: OutlinedButton(
                         onPressed: _isLoading ? null : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color.fromARGB(255, 241, 2, 2),
+                          foregroundColor: const Color.fromARGB(255, 253, 0, 0),
                           side: BorderSide(color: Colors.grey[400]!),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
