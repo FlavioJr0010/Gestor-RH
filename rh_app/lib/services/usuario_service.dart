@@ -50,4 +50,9 @@ class UsuarioService {
     // Retorna o primeiro usuário encontrado
     return Usuario.fromMap(snapshot.docs.first.id, snapshot.docs.first.data() as Map<String, dynamic>);
   }
+  Future<void> atualizarSenha(String documentId, String novaSenha) {
+
+    return _collection.doc(documentId).update({'senha': novaSenha});
+  }
+
 }

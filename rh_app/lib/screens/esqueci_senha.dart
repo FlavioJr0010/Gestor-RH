@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Removido o import do 'cloud_firestore'.
+import '../services/usuario_service.dart'; // << Importa o serviço
 
 class EsqueciSenha extends StatefulWidget {
   const EsqueciSenha({super.key});
@@ -14,10 +15,12 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  // Variáveis de estado para controlar a UI
+  // << Instancia o serviço >>
+  final _usuarioService = UsuarioService();
+
   bool _isLoading = false;
   bool _emailFound = false;
-  String? _documentIdToUpdate; // Para guardar o ID do documento encontrado
+  String? _documentIdToUpdate;
 
   @override
   void dispose() {
@@ -27,31 +30,21 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
     super.dispose();
   }
 
-  // Função para buscar o e-mail no Firestore
+  // << Função de busca agora usa o serviço >>
   Future<void> _searchEmail() async {
     if (_emailController.text.isEmpty) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() { _isLoading = true; });
 
     try {
-      // << MUDANÇA AQUI: Buscando na coleção 'usuarios' >>
-      // Se o nome da sua coleção for diferente, altere a linha abaixo.
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('usuarios') // Alterado de 'funcionarios' para 'usuarios'
-          .where('email', isEqualTo: _emailController.text.trim())
-          .limit(1)
-          .get();
+      final documentId = await _usuarioService.buscarPorEmail(_emailController.text);
 
-      if (querySnapshot.docs.isNotEmpty) {
-        // E-mail encontrado!
+      if (documentId != null) {
         setState(() {
           _emailFound = true;
-          _documentIdToUpdate = querySnapshot.docs.first.id;
+          _documentIdToUpdate = documentId.id;
         });
       } else {
-        // E-mail não encontrado
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -64,34 +57,22 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao buscar e-mail: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Erro ao buscar e-mail: $e')),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) { setState(() { _isLoading = false; }); }
     }
   }
 
-  // Função para confirmar e salvar a nova senha
+  // << Função de confirmação agora usa o serviço >>
   Future<void> _confirmNewPassword() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() { _isLoading = true; });
 
       try {
-        // << MUDANÇA AQUI: Atualizando na coleção 'usuarios' >>
-        await FirebaseFirestore.instance
-            .collection('usuarios') // Alterado de 'funcionarios' para 'usuarios'
-            .doc(_documentIdToUpdate)
-            .update({'senha': _passwordController.text}); // Supondo que o campo se chame 'senha'
+        await _usuarioService.atualizarSenha(
+            _documentIdToUpdate!, _passwordController.text);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -105,24 +86,18 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erro ao atualizar senha: $e'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text('Erro ao atualizar senha: $e')),
           );
         }
       } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+        if (mounted) { setState(() { _isLoading = false; }); }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // A interface (build method) continua exatamente a mesma.
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recuperar Senha'),
@@ -135,15 +110,12 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Ícone
                 Icon(
                   Icons.person_search,
                   size: 80,
                   color: Theme.of(context).primaryColor,
                 ),
                 const SizedBox(height: 24),
-
-                // Seção de busca de e-mail
                 const Text(
                   'Enter your email:',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -157,11 +129,9 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
-                  // O campo de e-mail fica desabilitado após a busca
                   enabled: !_emailFound,
                 ),
                 const SizedBox(height: 16),
-                // O botão de busca só aparece se o e-mail ainda não foi encontrado
                 if (!_emailFound)
                   _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -169,8 +139,6 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
                           onPressed: _searchEmail,
                           child: const Text('SEARCH'),
                         ),
-
-                // Seção de nova senha (só aparece se o e-mail for encontrado)
                 if (_emailFound) ...[
                   const SizedBox(height: 32),
                   const Text(
