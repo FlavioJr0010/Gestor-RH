@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EsqueciSenha extends StatefulWidget {
   const EsqueciSenha({super.key});
@@ -9,88 +9,114 @@ class EsqueciSenha extends StatefulWidget {
 }
 
 class _EsqueciSenhaState extends State<EsqueciSenha> {
-  // Chave para validar o formulário
   final _formKey = GlobalKey<FormState>();
-  // Controlador para o campo de texto do e-mail
   final _emailController = TextEditingController();
-  // Instância do Firebase Auth para usar suas funções
-  final _auth = FirebaseAuth.instance;
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
-  // Variável para controlar o estado de carregamento
+  // Variáveis de estado para controlar a UI
   bool _isLoading = false;
+  bool _emailFound = false;
+  String? _documentIdToUpdate; // Para guardar o ID do documento encontrado
 
   @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  // Função que será chamada ao pressionar o botão
-  Future<void> _enviarEmailRecuperacao() async {
-    // 1. Valida se o formulário foi preenchido corretamente
-    final isFormValid = _formKey.currentState?.validate() ?? false;
-    if (!isFormValid) {
-      return; // Se o formulário não for válido, não faz nada.
-    }
+  // Função para buscar o e-mail no Firestore
+  Future<void> _searchEmail() async {
+    if (_emailController.text.isEmpty) return;
 
-    // 2. Ativa o indicador de carregamento
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // 3. Tenta enviar o e-mail de redefinição de senha para o endereço fornecido
-      await _auth.sendPasswordResetEmail(email: _emailController.text.trim());
+      // << MUDANÇA AQUI: Buscando na coleção 'usuarios' >>
+      // Se o nome da sua coleção for diferente, altere a linha abaixo.
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('usuarios') // Alterado de 'funcionarios' para 'usuarios'
+          .where('email', isEqualTo: _emailController.text.trim())
+          .limit(1)
+          .get();
 
-      // 4. Se o envio foi bem-sucedido, mostra uma mensagem de sucesso.
-      // A verificação 'mounted' garante que o widget ainda está na tela antes de usar o 'context'.
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('E-mail de recuperação enviado! Verifique sua caixa de entrada.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Opcional: Aguarda um segundo para o usuário ver a mensagem e depois volta para a tela anterior.
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
-        Navigator.of(context).pop();
+      if (querySnapshot.docs.isNotEmpty) {
+        // E-mail encontrado!
+        setState(() {
+          _emailFound = true;
+          _documentIdToUpdate = querySnapshot.docs.first.id;
+        });
+      } else {
+        // E-mail não encontrado
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('E-mail não encontrado na base de dados.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
-
-    } on FirebaseAuthException catch (e) {
-      // 5. Trata erros específicos do Firebase (como e-mail não encontrado)
-      if (!mounted) return;
-
-      String errorMessage = 'Ocorreu um erro. Tente novamente.';
-      // Mapeia os códigos de erro mais comuns para mensagens amigáveis
-      if (e.code == 'user-not-found') {
-        errorMessage = 'Nenhum usuário encontrado para este e-mail.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'O formato do e-mail fornecido é inválido.';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
     } catch (e) {
-      // 6. Trata qualquer outro erro inesperado que possa ocorrer
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ocorreu um erro inesperado. Por favor, tente mais tarde.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao buscar e-mail: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      // 7. Garante que o indicador de carregamento seja desativado, não importa o que aconteça
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  // Função para confirmar e salvar a nova senha
+  Future<void> _confirmNewPassword() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        // << MUDANÇA AQUI: Atualizando na coleção 'usuarios' >>
+        await FirebaseFirestore.instance
+            .collection('usuarios') // Alterado de 'funcionarios' para 'usuarios'
+            .doc(_documentIdToUpdate)
+            .update({'senha': _passwordController.text}); // Supondo que o campo se chame 'senha'
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Senha alterada com sucesso!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erro ao atualizar senha: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -100,81 +126,97 @@ class _EsqueciSenhaState extends State<EsqueciSenha> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recuperar Senha'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
       ),
-      backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Ícone similar ao da sua imagem
+                // Ícone
                 Icon(
-                  Icons.lock_reset,
+                  Icons.person_search,
                   size: 80,
                   color: Theme.of(context).primaryColor,
                 ),
                 const SizedBox(height: 24),
 
-                // Título
+                // Seção de busca de e-mail
                 const Text(
-                  'Esqueceu sua senha?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  'Enter your email:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Sem problemas. Insira seu e-mail abaixo e enviaremos um link para você criar uma nova senha.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                const SizedBox(height: 32),
-
-                // Campo de E-mail
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(
-                    labelText: 'E-mail',
-                    hintText: 'seuemail@exemplo.com',
+                    labelText: 'Email address',
                     prefixIcon: Icon(Icons.email_outlined),
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty || !value.contains('@')) {
-                      return 'Por favor, insira um e-mail válido.';
-                    }
-                    return null;
-                  },
+                  // O campo de e-mail fica desabilitado após a busca
+                  enabled: !_emailFound,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                // O botão de busca só aparece se o e-mail ainda não foi encontrado
+                if (!_emailFound)
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: _searchEmail,
+                          child: const Text('SEARCH'),
+                        ),
 
-                // Botão de Enviar
-                // Mostra um indicador de progresso se estiver carregando
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ElevatedButton(
-                        onPressed: _enviarEmailRecuperacao,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                // Seção de nova senha (só aparece se o e-mail for encontrado)
+                if (_emailFound) ...[
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Enter your new password',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                    obscureText: true,
+                    validator: (value) {
+                      if (value == null || value.length < 6) {
+                        return 'A senha deve ter pelo menos 6 caracteres.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm Password',
+                      prefixIcon: Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                    obscureText: true,
+                    validator: (value) {
+                      if (value != _passwordController.text) {
+                        return 'As senhas não coincidem.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: _confirmNewPassword,
+                          child: const Text('CONFIRM'),
                         ),
-                        child: const Text(
-                          'ENVIAR E-MAIL DE RECUPERAÇÃO',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
+                ]
               ],
             ),
           ),
