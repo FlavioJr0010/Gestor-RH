@@ -24,6 +24,16 @@ class _PrincipalState extends State<Principal> {
       
       backgroundColor: Colors.white,
 
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navega para a tela de administrador usando a rota nomeada
+          Navigator.pushNamed(context, '/adm');
+        },
+        tooltip: 'Painel do Administrador',
+        child: const Icon(Icons.admin_panel_settings),
+      ),
+
+
       // 2. Todo o conteúdo da tela vai aqui, no body do Scaffold.
       body: Padding(
         padding: const EdgeInsets.all(16.0),

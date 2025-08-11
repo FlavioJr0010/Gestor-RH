@@ -1,6 +1,7 @@
 // screens/atualizar_funcionario.dart
 import 'package:flutter/material.dart';
-import 'package:rh_app/widgets/custom_app_bar.dart';
+// O import do CustomAppBar não é mais necessário se não for usado em outro lugar.
+// import 'package:rh_app/widgets/custom_app_bar.dart'; 
 import '../models/funcionario.dart';
 import '../services/funcionario_service.dart';
 
@@ -16,10 +17,13 @@ class _AtualizarFuncionarioState extends State<AtualizarFuncionario> {
   final _formKey = GlobalKey<FormState>();
   final _funcionarioService = FuncionarioService();
 
+  // << 1. CONTROLADOR DE E-MAIL DECLARADO >>
+  late TextEditingController _emailController;
   late TextEditingController _nomeController;
   late TextEditingController _salarioController;
   late TextEditingController _telefoneController;
   late TextEditingController _enderecoController;
+
   String? _cargoSelecionado;
   String? _statusCivilSelecionado;
   String _statusSelecionado = 'Ativo';
@@ -27,33 +31,30 @@ class _AtualizarFuncionarioState extends State<AtualizarFuncionario> {
   final List<String> _cargos = ['Desenvolvedor', 'UX Designer', 'Recursos Humanos', 'Gerente de Projetos'];
   final List<String> _statusCivis = ['Solteiro(a)', 'Casado(a)', 'Viúvo(a)'];
 
-@override
-void initState() {
-  super.initState();
-  
+  @override
+  void initState() {
+    super.initState();
+    
+    // << 2. INICIALIZANDO O CONTROLLER DE E-MAIL >>
+    _emailController = TextEditingController(text: widget.funcionario.email);
+    _nomeController = TextEditingController(text: widget.funcionario.nome);
+    _salarioController = TextEditingController(text: widget.funcionario.salario.toStringAsFixed(2));
+    _telefoneController = TextEditingController(text: widget.funcionario.telefone);
+    _enderecoController = TextEditingController(text: widget.funcionario.endereco);
 
-  _nomeController = TextEditingController(text: widget.funcionario.nome);
-  _salarioController = TextEditingController(text: widget.funcionario.salario.toStringAsFixed(2));
-  _telefoneController = TextEditingController(text: widget.funcionario.telefone);
-  _enderecoController = TextEditingController(text: widget.funcionario.endereco);
-
-  // Verifica se o cargo do funcionário existe na nossa lista de opções
-  if (_cargos.contains(widget.funcionario.cargo)) {
-    _cargoSelecionado = widget.funcionario.cargo;
-  } 
-  // Se não existir, _cargoSelecionado continuará null e o hintText "Selecione o cargo" aparecerá
-
-  // Verifica se o estado civil do funcionário existe na nossa lista
-  if (_statusCivis.contains(widget.funcionario.statusCivil)) {
-    _statusCivilSelecionado = widget.funcionario.statusCivil;
+    if (_cargos.contains(widget.funcionario.cargo)) {
+      _cargoSelecionado = widget.funcionario.cargo;
+    }
+    if (_statusCivis.contains(widget.funcionario.statusCivil)) {
+      _statusCivilSelecionado = widget.funcionario.statusCivil;
+    }
+    _statusSelecionado = widget.funcionario.status;
   }
-  // Se não existir, _statusCivilSelecionado continuará null
-
-  _statusSelecionado = widget.funcionario.status;
-}
 
   @override
   void dispose() {
+    // << 3. LIMPANDO O CONTROLLER DE E-MAIL >>
+    _emailController.dispose();
     _nomeController.dispose();
     _salarioController.dispose();
     _telefoneController.dispose();
@@ -72,15 +73,20 @@ void initState() {
         status: _statusSelecionado,
         endereco: _enderecoController.text,
         statusCivil: _statusCivilSelecionado!,
+        email: _emailController.text, // << 4. E-MAIL ENVIADO NA ATUALIZAÇÃO >>
       );
 
       _funcionarioService.atualizar(funcionarioAtualizado).then((_) {
+        // Adicionando verificação de segurança
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Funcionário atualizado com sucesso!')),
         );
-        Navigator.of(context)..pop()..pop();
+        // Um único pop é geralmente o suficiente para voltar para a tela anterior.
+        Navigator.of(context).pop();
       }).catchError((error) {
-         ScaffoldMessenger.of(context).showSnackBar(
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao atualizar funcionário: $error')),
         );
       });
@@ -90,7 +96,13 @@ void initState() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(),
+      // << 5. APPBAR CORRIGIDO >>
+      appBar: AppBar(
+        title: const Text('Atualizar Funcionário'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black, // Cor do texto e ícones
+        elevation: 1.0,
+      ),
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Padding(
@@ -98,82 +110,86 @@ void initState() {
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'Atualizar funcionário:',
+                  'Atualizar dados do funcionário:',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24),
 
-                // --- INÍCIO DO FORMULÁRIO COMPLETO ---
-
-                const Text('Digite o nome:', style: TextStyle(fontSize: 16)),
                 TextFormField(
                   controller: _nomeController,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline)),
+                  decoration: const InputDecoration(labelText: 'Nome', prefixIcon: Icon(Icons.person_outline)),
                   validator: (value) => (value == null || value.isEmpty) ? 'Campo obrigatório' : null,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                const Text('Digite o salário:', style: TextStyle(fontSize: 16)),
+                // << 6. CAMPO DE E-MAIL ADICIONADO AO FORMULÁRIO >>
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(labelText: 'E-mail', prefixIcon: Icon(Icons.email_outlined)),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty || !value.contains('@')) {
+                      return 'Por favor, insira um e-mail válido';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
                 TextFormField(
                   controller: _salarioController,
-                  decoration: const InputDecoration(prefixText: 'R\$ '),
+                  decoration: const InputDecoration(labelText: 'Salário', prefixText: 'R\$ '),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) => (value == null || value.isEmpty) ? 'Campo obrigatório' : null,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                const Text('Digite o telefone:', style: TextStyle(fontSize: 16)),
                 TextFormField(
                   controller: _telefoneController,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.phone_outlined)),
+                  decoration: const InputDecoration(labelText: 'Telefone', prefixIcon: Icon(Icons.phone_outlined)),
                   keyboardType: TextInputType.phone,
                   validator: (value) => (value == null || value.isEmpty) ? 'Campo obrigatório' : null,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                const Text('Escolha o cargo:', style: TextStyle(fontSize: 16)),
+                TextFormField(
+                  controller: _enderecoController,
+                  decoration: const InputDecoration(labelText: 'Endereço', prefixIcon: Icon(Icons.location_on_outlined)),
+                  validator: (value) => (value == null || value.isEmpty) ? 'Campo obrigatório' : null,
+                ),
+                const SizedBox(height: 16),
+
                 DropdownButtonFormField<String>(
                   value: _cargoSelecionado,
+                  decoration: const InputDecoration(labelText: 'Cargo', border: OutlineInputBorder()),
                   items: _cargos.map((cargo) => DropdownMenuItem(value: cargo, child: Text(cargo))).toList(),
                   onChanged: (value) => setState(() => _cargoSelecionado = value),
                   validator: (value) => value == null ? 'Campo obrigatório' : null,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                const Text('Digite o endereço:', style: TextStyle(fontSize: 16)),
-                TextFormField(
-                  controller: _enderecoController,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.location_on_outlined)),
-                  validator: (value) => (value == null || value.isEmpty) ? 'Campo obrigatório' : null,
-                ),
-                const SizedBox(height: 20),
-
-                const Text('Escolha o estado civil:', style: TextStyle(fontSize: 16)),
                 DropdownButtonFormField<String>(
                   value: _statusCivilSelecionado,
+                  decoration: const InputDecoration(labelText: 'Estado Civil', border: OutlineInputBorder()),
                   items: _statusCivis.map((sc) => DropdownMenuItem(value: sc, child: Text(sc))).toList(),
                   onChanged: (value) => setState(() => _statusCivilSelecionado = value),
                   validator: (value) => value == null ? 'Campo obrigatório' : null,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                const Text('Defina o status:', style: TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
+                const Text('Status do Funcionário:', style: TextStyle(fontSize: 16)),
+                const SizedBox(height: 8),
                 ToggleButtons(
                   isSelected: [_statusSelecionado == 'Inativo', _statusSelecionado == 'Ativo'],
                   onPressed: (index) => setState(() => _statusSelecionado = index == 0 ? 'Inativo' : 'Ativo'),
                   borderRadius: BorderRadius.circular(8),
                   selectedColor: Colors.white,
                   fillColor: _statusSelecionado == 'Ativo' ? Colors.green : Colors.red,
-                  children: const [
-                    Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Inativo')),
-                    Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Ativo')),
-                  ],
+                  constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
+                  children: const [Text('Inativo'), Text('Ativo')],
                 ),
                 const SizedBox(height: 32),
 
@@ -182,22 +198,16 @@ void initState() {
                   children: [
                     OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red, side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                      ),
+                          foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
+                      child: const Text('Cancelar'),
                     ),
                     ElevatedButton(
                       onPressed: _atualizar,
                       child: const Text('Atualizar'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                      ),
                     ),
                   ],
                 ),
-                // --- FIM DO FORMULÁRIO COMPLETO ---
               ],
             ),
           ),

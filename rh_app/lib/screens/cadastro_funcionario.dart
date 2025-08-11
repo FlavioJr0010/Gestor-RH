@@ -20,6 +20,7 @@ class _CadastroFuncionarioState extends State<CadastroFuncionario> {
   final _salarioController = TextEditingController();
   final _telefoneController = TextEditingController();
   final _enderecoController = TextEditingController(); // NOVO CONTROLADOR
+  final _emailController = TextEditingController();
 
   // Variáveis para os Dropdowns e ToggleButtons
   String? _cargoSelecionado;
@@ -36,22 +37,23 @@ class _CadastroFuncionarioState extends State<CadastroFuncionario> {
     _salarioController.dispose();
     _telefoneController.dispose();
     _enderecoController.dispose(); // LIMPAR NOVO CONTROLADOR
+    _emailController.dispose();
     super.dispose();
   }
 
   void _salvar() {
-    if (_formKey.currentState!.validate()) {
-      final novoFuncionario = Funcionario(
-        id: '',
-        nome: _nomeController.text,
-        salario: double.tryParse(_salarioController.text) ?? 0.0,
-        telefone: _telefoneController.text,
-        cargo: _cargoSelecionado!,
-        status: _statusSelecionado,
-        endereco: _enderecoController.text, // NOVO CAMPO
-        statusCivil: _statusCivilSelecionado!, // NOVO CAMPO
-      );
-
+  if (_formKey.currentState!.validate()) {
+    final novoFuncionario = Funcionario(
+      id: '',
+      nome: _nomeController.text,
+      salario: double.tryParse(_salarioController.text) ?? 0.0,
+      telefone: _telefoneController.text,
+      cargo: _cargoSelecionado!,
+      status: _statusSelecionado,
+      endereco: _enderecoController.text,
+      statusCivil: _statusCivilSelecionado!,
+      email: _emailController.text, // << ADICIONE ESTA LINHA
+    );
       _funcionarioService.adicionar(novoFuncionario).then((_) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Funcionário cadastrado com sucesso!')),
@@ -138,7 +140,25 @@ class _CadastroFuncionarioState extends State<CadastroFuncionario> {
                 ),
                 const SizedBox(height: 20),
 
-                                // --- NOVO CAMPO ENDEREÇO ---
+                const Text('Digite o e-mail:', style: TextStyle(fontSize: 16)),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    hintText: 'E-mail',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Campo obrigatório';
+                    }
+                    if (!value.contains('@')) {
+                      return 'E-mail inválido';
+                    }
+                    return null;
+                  },
+                ),
+                
                 const SizedBox(height: 20),
                 const Text('Digite o endereço:', style: TextStyle(fontSize: 16)),
                 TextFormField(

@@ -14,23 +14,26 @@ class FuncionarioService {
 
   Stream<List<Funcionario>> listarTodos() => _collection.snapshots().map(
         (snapshot) => snapshot.docs
-            .map((doc) => Funcionario.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+            .map((doc) => Funcionario.fromMap(
+                  doc.data() as Map<String, dynamic>, // << CORREÇÃO AQUI (dados primeiro)
+                  doc.id,                               // << CORREÇÃO AQUI (ID depois)
+                ))
             .toList(),
       );
 
-  // NOVO MÉTODO DE BUSCA
   Stream<List<Funcionario>> buscarPorNome(String nome) {
-    // Se o nome da busca estiver vazio, retorna todos.
     if (nome.isEmpty) {
       return listarTodos();
     }
-    // Senão, faz a busca. O `\uf8ff` é um truque para pegar todos os nomes que começam com o texto da busca.
     return _collection
         .where('nome', isGreaterThanOrEqualTo: nome)
         .where('nome', isLessThanOrEqualTo: '$nome\uf8ff')
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => Funcionario.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+            .map((doc) => Funcionario.fromMap(
+                  doc.data() as Map<String, dynamic>, // << CORREÇÃO AQUI (dados primeiro)
+                  doc.id,                               // << CORREÇÃO AQUI (ID depois)
+                ))
             .toList());
   }
 }
