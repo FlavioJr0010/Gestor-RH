@@ -55,4 +55,30 @@ class UsuarioService {
     return _collection.doc(documentId).update({'senha': novaSenha});
   }
 
+  Future<Usuario?> buscarPorId(String id) async {
+    final docSnapshot = await _collection.doc(id).get();
+    
+    if (docSnapshot.exists) {
+      // Se o documento existe, converte para um objeto Usuario e o retorna
+      return Usuario.fromMap(docSnapshot.id, docSnapshot.data() as Map<String, dynamic>);
+    }
+    
+    // Se não encontrar, retorna nulo
+    return null;
+  }
+
+  // NOVO MÉTODO DE BUSCA POR E-MAIL (PARA O PAINEL ADMIN)
+Stream<List<Usuario>> buscarPorEmailStream(String email) {
+  if (email.isEmpty) {
+    return listarTodos();
+  }
+  return _collection
+      .where('email', isGreaterThanOrEqualTo: email)
+      .where('email', isLessThanOrEqualTo: '$email\uf8ff')
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) => Usuario.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+          .toList());
+}
+
 }

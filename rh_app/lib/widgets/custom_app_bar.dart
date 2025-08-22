@@ -4,21 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/login.dart';
 
-// Usamos StatefulWidget porque precisamos carregar o nome do usuário do SharedPreferences,
-// o que é uma operação assíncrona. Também implementamos PreferredSizeWidget
-// para que o Flutter saiba a altura da nossa AppBar.
 class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
-  const CustomAppBar({super.key});
+  // MUDANÇA 1: Adicionamos um novo parâmetro opcional.
+  final bool hideBackButton;
+
+  const CustomAppBar({
+    super.key,
+    this.hideBackButton = false, // O valor padrão é 'false', então as outras telas não quebram.
+  });
 
   @override
   State<CustomAppBar> createState() => _CustomAppBarState();
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight); // Altura padrão de uma AppBar
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
 class _CustomAppBarState extends State<CustomAppBar> {
-  String _nomeUsuario = 'Usuário'; // Valor padrão
+  String _nomeUsuario = 'Usuário';
 
   @override
   void initState() {
@@ -26,10 +29,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
     _carregarNomeUsuario();
   }
 
-  // Carrega o nome do usuário salvo no SharedPreferences
   Future<void> _carregarNomeUsuario() async {
     final prefs = await SharedPreferences.getInstance();
-    // Se o widget ainda estiver na tela, atualiza o estado
     if (mounted) {
       setState(() {
         _nomeUsuario = prefs.getString('usuario_nome') ?? 'Usuário';
@@ -37,14 +38,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
     }
   }
 
-  // Lógica de logout
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('usuario_id');
     await prefs.remove('usuario_nome');
     
     if (mounted) {
-      // Navega para a tela de login e remove todas as outras telas da pilha
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const Login()),
@@ -53,7 +52,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
     }
   }
 
-  // Navega para a tela principal, limpando a pilha de navegação
   void _irParaPrincipal() {
     Navigator.pushNamedAndRemoveUntil(context, '/principal', (route) => false);
   }
@@ -63,17 +61,18 @@ class _CustomAppBarState extends State<CustomAppBar> {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      // Se houver uma tela anterior, mostra o botão de voltar automaticamente
-      automaticallyImplyLeading: Navigator.canPop(context), 
-      iconTheme: const IconThemeData(color: Colors.black87), // Cor do ícone de voltar
+      
+      // MUDANÇA 2: A lógica para mostrar o botão de voltar agora usa nosso novo parâmetro.
+      automaticallyImplyLeading: !widget.hideBackButton && Navigator.canPop(context),
+
+      iconTheme: const IconThemeData(color: Colors.black87),
       title: GestureDetector(
-        onTap: _irParaPrincipal, // A logo agora é um botão para a tela principal
+        onTap: _irParaPrincipal,
         child: Image.asset('images/GestorRHLogo.png', height: 35),
       ),
       actions: [
         Center(child: Text("Olá, $_nomeUsuario!", style: const TextStyle(color: Colors.black))),
         const SizedBox(width: 8),
-        // Menu de opções (logout)
         PopupMenuButton(
           icon: const CircleAvatar(child: Icon(Icons.person)),
           itemBuilder: (context) => [

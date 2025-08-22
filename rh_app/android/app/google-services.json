@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "711018129396",
-    "project_id": "sistema-rh-ifba",
-    "storage_bucket": "sistema-rh-ifba.firebasestorage.app"
+    "project_number": "560617958664",
+    "project_id": "gestor-rh-33471",
+    "storage_bucket": "gestor-rh-33471.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:711018129396:android:681e284770895930ee3ba1",
+        "mobilesdk_app_id": "1:560617958664:android:75471fc8d3c068019d50bd",
         "android_client_info": {
           "package_name": "com.example.rh_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAzRxfRLptAXViuijibcXd6st-tyYDq1W0"
+          "current_key": "AIzaSyA3uMVAAITOscZFWiQJVPvAp5_ygxbWno8"
         }
       ],
       "services": {

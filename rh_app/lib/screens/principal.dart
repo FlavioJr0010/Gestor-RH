@@ -20,18 +20,9 @@ class _PrincipalState extends State<Principal> {
   Widget build(BuildContext context) {
     return Scaffold(
       // 1. O CustomAppBar vai sozinho aqui, sem nenhum parâmetro.
-      appBar: const CustomAppBar(),
+      appBar: const CustomAppBar(hideBackButton: true),
       
       backgroundColor: Colors.white,
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navega para a tela de administrador usando a rota nomeada
-          Navigator.pushNamed(context, '/adm');
-        },
-        tooltip: 'Painel do Administrador',
-        child: const Icon(Icons.admin_panel_settings),
-      ),
 
 
       // 2. Todo o conteúdo da tela vai aqui, no body do Scaffold.

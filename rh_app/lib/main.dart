@@ -8,10 +8,10 @@ import 'firebase_options.dart'; // gerado pelo flutterfire configure
 import 'package:firebase_core/firebase_core.dart';
 
 //Screens
-import 'screens/home_screen.dart';
+//import 'screens/home_screen.dart';
 import 'screens/lista_funcionarios.dart';
 import 'screens/cadastro_funcionario.dart';
-import 'screens/detalhes_funcionario.dart';
+//import 'screens/detalhes_funcionario.dart';
 import 'package:rh_app/screens/cadastro_email.dart';
 import 'package:rh_app/screens/login.dart';
 import 'package:rh_app/screens/principal.dart';

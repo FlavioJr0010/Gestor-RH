@@ -95,7 +95,6 @@ class DetalhesFuncionario extends StatelessWidget {
                         icon: const Icon(Icons.edit),
                         label: const Text('Editar'),
                         onPressed: () {
-                          // ✅ NAVEGAÇÃO ADICIONADA AQUI
                           Navigator.push(
                             context,
                             MaterialPageRoute(

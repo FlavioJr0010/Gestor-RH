@@ -1,8 +1,10 @@
+// screens/tela_adm.dart
+
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:rh_app/models/funcionario.dart';
-import 'package:rh_app/services/funcionario_service.dart';
-import 'package:rh_app/screens/atualizar_funcionario.dart';
+import 'package:rh_app/models/solicitacao_senha.dart';
+import '../models/usuario.dart';
+import '../services/solicitacao_senha_service.dart';
+import '../services/usuario_service.dart';
 
 class TelaAdm extends StatefulWidget {
   const TelaAdm({super.key});
@@ -12,179 +14,256 @@ class TelaAdm extends StatefulWidget {
 }
 
 class _TelaAdmState extends State<TelaAdm> {
-  final FuncionarioService _service = FuncionarioService();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  String _busca = '';
+  int _paginaSelecionada = 0;
+  String _buscaUsuario = '';
 
-  void _mostrarDialogoDeExclusao(Funcionario funcionario) {
+  final _solicitacaoService = SolicitacaoSenhaService();
+  final _usuarioService = UsuarioService();
+
+  // --- LÓGICA DAS VIEWS ---
+
+
+  Future<void> _aprovar(SolicitacaoSenha solicitacao) async {
+    try {
+      final usuarioAtual = await _usuarioService.buscarPorId(solicitacao.usuarioId);
+
+      if (usuarioAtual == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ERRO: Usuário ${solicitacao.usuarioEmail} não encontrado.'), backgroundColor: Colors.red));
+        return;
+      }
+
+      final usuarioAtualizado = Usuario(
+        id: solicitacao.usuarioId,
+        nome: usuarioAtual.nome,
+        email: solicitacao.usuarioEmail,
+        senha: solicitacao.novaSenhaSugerida,
+      );
+
+      await _usuarioService.atualizar(usuarioAtualizado);
+      await _solicitacaoService.removerSolicitacao(solicitacao.id);
+
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Senha de ${solicitacao.usuarioEmail} atualizada!'), backgroundColor: Colors.green));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ocorreu um erro ao aprovar: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _negar(SolicitacaoSenha solicitacao) async {
+    await _solicitacaoService.removerSolicitacao(solicitacao.id);
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Solicitação de ${solicitacao.usuarioEmail} negada.'), backgroundColor: Colors.orange));
+  }
+
+  void _excluirUsuario(Usuario usuario) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirmar Exclusão'),
-          content: Text('Tem certeza que deseja excluir ${funcionario.nome}?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Excluir'),
-              onPressed: () {
-                _service.excluir(funcionario.id).then((_) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${funcionario.nome} foi excluído.')),
-                  );
-                }).catchError((error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erro ao excluir: $error')),
-                  );
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Exclusão'),
+        content: Text('Tem certeza que deseja excluir o usuário ${usuario.nome}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () {
+              _usuarioService.excluir(usuario.id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuário excluído!'), backgroundColor: Colors.green));
+            },
+            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarModalEdicao(Usuario usuario) {
+    final nomeController = TextEditingController(text: usuario.nome);
+    final emailController = TextEditingController(text: usuario.email);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Usuário'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nomeController,
+                decoration: const InputDecoration(labelText: 'Nome'),
+                validator: (value) => (value == null || value.isEmpty) ? 'Campo obrigatório' : null,
+              ),
+              TextFormField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'E-mail'),
+                validator: (value) => (value == null || value.isEmpty || !value.contains('@')) ? 'E-mail inválido' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final novoEmail = emailController.text.trim();
+                if (novoEmail != usuario.email) {
+                  final usuarioExistente = await _usuarioService.buscarPorEmail(novoEmail);
+                  if (mounted && usuarioExistente != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Este e-mail já está em uso por outro usuário.'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+                }
+                final usuarioAtualizado = Usuario(
+                  id: usuario.id,
+                  nome: nomeController.text,
+                  email: novoEmail,
+                  senha: usuario.senha,
+                );
+                _usuarioService.atualizar(usuarioAtualizado);
+                if(mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuário atualizado!'), backgroundColor: Colors.green));
+                }
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGETS DAS VIEWS ---
+  Widget _buildViewSolicitacoes() {
+    return StreamBuilder<List<SolicitacaoSenha>>(
+      stream: _solicitacaoService.listarSolicitacoesPendentes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError) return Center(child: Text("Ocorreu um erro: ${snapshot.error}"));
+        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('Nenhuma solicitação pendente.'));
+
+        final solicitacoes = snapshot.data!;
+        return ListView.builder(
+          itemCount: solicitacoes.length,
+          itemBuilder: (context, index) {
+            final s = solicitacoes[index];
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                title: Text(s.usuarioNome, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('E-mail: ${s.usuarioEmail}\nSenha sugerida: ${s.novaSenhaSugerida}'),
+                isThreeLine: true,
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () => _aprovar(s), tooltip: 'Aprovar'),
+                  IconButton(icon: const Icon(Icons.cancel, color: Colors.red), onPressed: () => _negar(s), tooltip: 'Negar'),
+                ]),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  void _enviarEmailResetSenha(String email) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Redefinir Senha'),
-          content: Text('Um e-mail será enviado para $email com instruções para redefinir a senha. Deseja continuar?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            TextButton(
-              child: const Text('Enviar'),
-              onPressed: () {
-                _auth.sendPasswordResetEmail(email: email).then((_) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('E-mail de redefinição enviado para $email.')),
+  Widget _buildViewUsuarios() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          child: TextField(
+            onChanged: (value) => setState(() => _buscaUsuario = value),
+            decoration: const InputDecoration(labelText: 'Buscar por e-mail...', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()),
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<List<Usuario>>(
+            stream: _usuarioService.buscarPorEmailStream(_buscaUsuario),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (snapshot.hasError) return Center(child: Text("Ocorreu um erro: ${snapshot.error}"));
+              if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('Nenhum usuário encontrado.'));
+
+              final usuarios = snapshot.data!;
+              return ListView.builder(
+                itemCount: usuarios.length,
+                itemBuilder: (context, index) {
+                  final u = usuarios[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: ListTile(
+                      title: Text(u.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(u.email),
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _mostrarModalEdicao(u), tooltip: 'Editar'),
+                        IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _excluirUsuario(u), tooltip: 'Excluir'),
+                      ]),
+                    ),
                   );
-                }).catchError((error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erro ao enviar e-mail: $error')),
-                  );
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
+  // --- BUILD PRINCIPAL DA TELA ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Painel do Administrador"),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1.0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
+        ],
       ),
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (value) => setState(() => _busca = value),
-                    decoration: InputDecoration(
-                      hintText: 'Buscar funcionário...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                    ),
+      body: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => setState(() => _paginaSelecionada = 0),
+                  style: TextButton.styleFrom(
+                    backgroundColor: _paginaSelecionada == 0 ? Colors.blue[100] : Colors.transparent,
+                    foregroundColor: Colors.blue[800],
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero)
                   ),
+                  child: const Text('Solicitações'),
                 ),
-                const SizedBox(width: 10),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: Colors.blue, size: 40),
-                  onPressed: () => Navigator.pushNamed(context, '/cadastro'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Gerenciar Funcionários e Acessos:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: StreamBuilder<List<Funcionario>>(
-                stream: _service.buscarPorNome(_busca),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(child: Text('Nenhum funcionário encontrado.'));
-                  }
-                  final funcionarios = snapshot.data!;
-                  return ListView.builder(
-                    itemCount: funcionarios.length,
-                    itemBuilder: (context, index) {
-                      final funcionario = funcionarios[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        child: ListTile(
-                          title: Text(funcionario.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(funcionario.email), // Exibindo o e-mail diretamente
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // << BOTÃO DE RESET DE SENHA INTEGRADO >>
-                              IconButton(
-                                icon: const Icon(Icons.password_rounded, color: Colors.blueGrey),
-                                tooltip: 'Redefinir Senha do Usuário',
-                                onPressed: () {
-                                  if (funcionario.email.isNotEmpty) {
-                                    _enviarEmailResetSenha(funcionario.email);
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Funcionário sem e-mail cadastrado.')),
-                                    );
-                                  }
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                tooltip: 'Excluir Funcionário',
-                                onPressed: () => _mostrarDialogoDeExclusao(funcionario),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
               ),
+              Expanded(
+                child: TextButton(
+                  onPressed: () => setState(() => _paginaSelecionada = 1),
+                   style: TextButton.styleFrom(
+                    backgroundColor: _paginaSelecionada == 1 ? Colors.blue[100] : Colors.transparent,
+                    foregroundColor: Colors.blue[800],
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero)
+                  ),
+                  child: const Text('Usuários'),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 1, thickness: 1),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: _paginaSelecionada == 0
+                  ? _buildViewSolicitacoes()
+                  : _buildViewUsuarios(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
